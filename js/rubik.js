@@ -14,24 +14,102 @@ const cubeData = () => {
     return [vertices, indices]
 }
 
+const squareData = (s=1, z=0) => {
+    const r = 0.5 * s
+    const vertices = [
+        [-r, -r, z],
+        [ r, -r, z],
+        [ r,  r, z],
+        [-r,  r, z],
+    ]
+    const indices = [
+        0, 1, 2,    0, 2, 3,
+    ]
+    return [vertices, indices]
+}
+
+class Face {
+    faceColors = {
+        'x-1': [0, 1, 1],
+         'x1': [1, 0, 0],
+        'y-1': [1, 0, 1],
+         'y1': [0, 1, 0],
+        'z-1': [1, 1, 0],
+         'z1': [0, 0, 1],
+    }
+    epsilon = 0.01
+
+    constructor(gl, block, position, facing, transform) {
+        this.gl = gl
+        this.block = block
+        const [v, i] = squareData(0.8, 0.5 + this.epsilon)
+
+        this.vertices = this.orientFace(v, ...transform)
+        this.indices = i
+        this.colors = this.getFaceColor(...facing)
+
+        this.geometry = new Geometry(gl, this.vertices, this.colors, this.indices)
+    }
+
+    orientFace(vertices, rAxis, angle) {
+        if (!angle) {
+            return vertices.flat()
+        }
+        const res = vertices.map(v => vec3[`rotate${rAxis}`]([], v, [0, 0, 0], rad(angle)))
+        return res.flat()
+    }
+
+    getFaceColor(axis, dir) {
+        const color = this.faceColors[`${axis}${dir}`]
+        return Array(this.vertices.length/3).fill(color).flat()
+    }
+
+    draw(shader) {
+        this.geometry.update(this.block.position)
+        this.geometry.draw(shader)
+    }
+}
+
 
 class Block {
-    constructor(position, color) {
-        this.id = sum(position.map((p, i) => p * (3**(3-1-i))))
-        this.id3 = position
-        this.position = position.map(p => (p-1) * 1.5)
+    constructor(gl, position, color) {
+        this.gl = gl
+        this.position = position.map(p => p * 1.5)
 
         const [v, i] = cubeData()
         this.vertices = v
         this.indices = i
-        this.colors = Array(this.vertices.length/3).fill(color).flat()
+        // this.colors = Array(this.vertices.length/3).fill(color).flat()
+        this.colors = [].concat(
+            Array(this.vertices.length/3/2).fill(color).flat(),
+            Array(this.vertices.length/3/2).fill([0, 0, 0]).flat(),
+        )
 
         this.geometry = new Geometry(gl, this.vertices, this.colors, this.indices)
+        this.faces = this.createFaces(position)
+    }
+
+    createFaces(position) {
+        const faceTransforms = [
+            {0: ['Y', -90], 2: ['Y',  90]},
+            {0: ['X',  90], 2: ['X', -90]},
+            {0: ['Y', 180], 2: ['Y',   0]},
+        ]
+        const faces = []
+        position.forEach((p, i) => {
+            if (p) {
+                faces.push(new Face(this.gl, this, position, [['x', 'y', 'z'][i], p], faceTransforms[i][p+1]))
+            }
+        })
+        return faces
     }
 
     draw(shader) {
         this.geometry.update(this.position)
         this.geometry.draw(shader)
+        for (let face of this.faces) {
+            face.draw(shader)
+        }
     }
 }
 
@@ -51,10 +129,10 @@ class Rubik {
         this.blockColor = [0.1, 0.1, 0.1]
         this.blocks = []
 
-        for (let x=0; x<3; x++) {
-            for (let y=0; y<3; y++) {
-                for (let z=0; z<3; z++) {
-                    this.blocks.push(new Block([x, y, z], this.blockColor))
+        for (let x=-1; x<2; x++) {
+            for (let y=-1; y<2; y++) {
+                for (let z=-1; z<2; z++) {
+                    this.blocks.push(new Block(this.gl,[x, y, z], this.blockColor))
                 }
             }
         }

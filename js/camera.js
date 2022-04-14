@@ -1,5 +1,5 @@
 class Camera {
-    position = [0.0, 0.0, 10.0]
+    position = [10.0, 10.0, 10.0]
     up = [0, 1, 0]
     target = [0, 0, 0]
 
