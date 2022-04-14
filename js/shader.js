@@ -65,6 +65,15 @@ class Shader {
         return locations
     }
 
+    setUniformMat4(name, matrix) {
+        this.gl.uniformMatrix4fv(this.uniformLocations[name], false, matrix)
+    }
+
+    setUniforms(camera) {
+        this.setUniformMat4('u_ProjectionMatrix', camera.projectionMatrix);
+        this.setUniformMat4('u_ViewMatrix', camera.viewMatrix);
+    }
+
     bind() {
         this.gl.useProgram(this.program)
         if (this.vertexPosition > -1) this.gl.enableVertexAttribArray(this.vertexPosition)

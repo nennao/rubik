@@ -25,4 +25,9 @@ class Camera {
         this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height)
         this.aspect = this.gl.canvas.clientWidth / this.gl.canvas.clientHeight
     }
+
+    update(dt) {
+        mat4.perspective(this.projectionMatrix, this.fov, this.aspect, this.zNear, this.zFar)
+        mat4.lookAt(this.viewMatrix, this.position, this.target, this.up)
+    }
 }

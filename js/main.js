@@ -35,7 +35,7 @@ function main() {
 
     function render(now) {
         if (!Object.keys(loading).length) {
-            rubik.draw(now*0.001)
+            rubik.render(now*0.001)
         }
         requestAnimationFrame(render)
     }

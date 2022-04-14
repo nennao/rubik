@@ -14,6 +14,10 @@ function mR(x, dp) {
     return Math.round((x + Number.EPSILON) * Math.pow(10, dp || 0)) /  Math.pow(10, dp || 0)
 }
 
+function sum(a) {
+    return a.reduce((x, y) => x + y, 0)
+}
+
 
 async function fetchAndDecode(url, type='text') {
     let response = await fetch(url);
