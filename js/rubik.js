@@ -39,8 +39,8 @@ class Face {
     }
     epsilon = 0.01
 
-    constructor(gl, block, position, facing, transform) {
-        this.gl = gl
+    constructor(block, position, facing, transform) {
+        this.gl = block.gl
         this.block = block
         const [v, i] = squareData(0.8, 0.5 + this.epsilon)
 
@@ -65,23 +65,24 @@ class Face {
     }
 
     draw(shader) {
-        this.geometry.update(this.block.position)
+        this.geometry.update(this.block.displayPosition)
         this.geometry.draw(shader)
     }
 }
 
 
 class Block {
-    constructor(gl, position, color) {
-        this.gl = gl
-        this.position = position.map(p => p * 1.5)
+    constructor(root, position) {
+        this.gl = root.gl
+        this.root = root
+        this.position = position
 
         const [v, i] = cubeData()
         this.vertices = v
         this.indices = i
         // this.colors = Array(this.vertices.length/3).fill(color).flat()
         this.colors = [].concat(
-            Array(this.vertices.length/3/2).fill(color).flat(),
+            Array(this.vertices.length/3/2).fill(root.blockColor).flat(),
             Array(this.vertices.length/3/2).fill([0, 0, 0]).flat(),
         )
 
@@ -98,14 +99,18 @@ class Block {
         const faces = []
         position.forEach((p, i) => {
             if (p) {
-                faces.push(new Face(this.gl, this, position, [['x', 'y', 'z'][i], p], faceTransforms[i][p+1]))
+                faces.push(new Face(this, position, [['x', 'y', 'z'][i], p], faceTransforms[i][p+1]))
             }
         })
         return faces
     }
 
+    get displayPosition() {
+        return this.root.displayTransform(this.position)
+    }
+
     draw(shader) {
-        this.geometry.update(this.position)
+        this.geometry.update(this.displayPosition)
         this.geometry.draw(shader)
         for (let face of this.faces) {
             face.draw(shader)
@@ -121,21 +126,26 @@ class Rubik {
         this.gl = gl
 
         this.gl.clearColor(1.0, 1.0, 1.0, 1.0)
-        gl.clearDepth(1)
+        this.gl.clearDepth(1)
 
         this.camera = camera
         this.shader = shader
 
+        this.spread = 1.5
         this.blockColor = [0.1, 0.1, 0.1]
         this.blocks = []
 
         for (let x=-1; x<2; x++) {
             for (let y=-1; y<2; y++) {
                 for (let z=-1; z<2; z++) {
-                    this.blocks.push(new Block(this.gl,[x, y, z], this.blockColor))
+                    this.blocks.push(new Block(this,[x, y, z]))
                 }
             }
         }
+    }
+
+    displayTransform(positions) {
+        return positions.map(p => p * this.spread)
     }
 
     drawBlocks() {
@@ -143,7 +153,6 @@ class Rubik {
             block.draw(this.shader)
         }
     }
-
 
     draw() {
         this.shader.bind()
