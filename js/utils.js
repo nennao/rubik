@@ -19,6 +19,10 @@ function sum(a) {
 }
 
 
+function randInt(x) {
+    return Math.floor(Math.random() * x)
+}
+
 async function fetchAndDecode(url, type='text') {
     let response = await fetch(url);
 

@@ -65,7 +65,6 @@ class Face {
     }
 
     draw(shader) {
-        this.geometry.update(this.block.displayPosition)
         this.geometry.draw(shader)
     }
 }
@@ -88,6 +87,7 @@ class Block {
 
         this.geometry = new Geometry(gl, this.vertices, this.colors, this.indices)
         this.faces = this.createFaces(position)
+        this.initPosition()
     }
 
     createFaces(position) {
@@ -105,12 +105,25 @@ class Block {
         return faces
     }
 
-    get displayPosition() {
-        return this.root.displayTransform(this.position)
+    initPosition() {
+        const displayPosition = this.root.displayTransform(this.position)
+        const _initPos = entity => {mat4.translate(entity.geometry.transform, mat4.create(), displayPosition)}
+        _initPos(this)
+        this.faces.forEach(_initPos)
+    }
+
+    rotate(axisId, dir) {
+        const angle = rad(90 * dir)
+        const axis = ['x', 'y', 'z'].map(a => a === axisId ? 1 : 0)
+        const rotation = mat4.rotate(mat4.create(), mat4.create(), angle, axis)
+
+        const _rotate = entity => {mat4.multiply(entity.geometry.transform, rotation, entity.geometry.transform)}
+        _rotate(this)
+        this.faces.forEach(_rotate)
+        this.position = vec3[`rotate${axisId.toUpperCase()}`]([], this.position, axis, angle).map(mR)
     }
 
     draw(shader) {
-        this.geometry.update(this.displayPosition)
         this.geometry.draw(shader)
         for (let face of this.faces) {
             face.draw(shader)
@@ -142,10 +155,25 @@ class Rubik {
                 }
             }
         }
+        for (let _ of Array(3)) {
+            const axis = ['x', 'y', 'z'][randInt(3)]
+            const level = [-1, 0, 1][randInt(3)]
+            const dir = [-1, 1][randInt(2)]
+            this.doRotate(axis, level, dir)
+        }
     }
 
     displayTransform(positions) {
         return positions.map(p => p * this.spread)
+    }
+
+    doRotate(axis, level, dir) {
+        const axisId = ['x', 'y', 'z'].indexOf(axis)
+        for (let block of this.blocks) {
+            if (block.position[axisId] === level) {
+                block.rotate(axis, dir)
+            }
+        }
     }
 
     drawBlocks() {

@@ -10,10 +10,6 @@ class Geometry {
         this.transform = mat4.create()
     }
 
-    update(position) {
-        this.transform = mat4.translate(mat4.create(), mat4.create(), position)
-    }
-
     draw(shader) {
         shader.setUniformMat4('u_ModelMatrix', this.transform)
 
