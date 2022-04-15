@@ -30,4 +30,16 @@ class Camera {
         mat4.perspective(this.projectionMatrix, this.fov, this.aspect, this.zNear, this.zFar)
         mat4.lookAt(this.viewMatrix, this.position, this.target, this.up)
     }
+
+    clipXY(mouseX, mouseY) {
+        const w2 = this.gl.canvas.clientWidth/2, h2 = this.gl.canvas.clientHeight/2
+        return [(mouseX - w2)/w2, (h2 - mouseY)/h2]  // -1 to 1
+    }
+
+    getPickedVector(x, y) {
+        const pf = [...this.clipXY(x, y), 1]
+        const PV = mat4.multiply(mat4.create(), this.projectionMatrix, this.viewMatrix)
+        const invVP = mat4.invert(mat4.create(), PV)
+        return vec3.transformMat4([], pf, invVP)
+    }
 }

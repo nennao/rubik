@@ -162,6 +162,7 @@ class Rubik {
 
         this.initUIWatcher()
         initDOMInputs(this)
+        this.handleInputEvents()
     }
 
     initUIWatcher() {
@@ -175,6 +176,38 @@ class Rubik {
 
     triggerRedraw() {
         this.uiWatcher[0].val = 1
+    }
+
+    handleInputEvents() {
+        this.gl.canvas.addEventListener('click', e => {
+            if (e.which === 1) {
+                const [ closest, closestId ] = this.findClosestBlock(e.clientX, e.clientY)
+                if (closest) {
+                    console.log(closestId)
+                }
+            }
+        })
+    }
+
+    findClosestBlock(x, y) {
+        let closest, closestId, closestDist = Infinity
+        const pNear= this.camera.position
+        const pFar = this.camera.getPickedVector(x, y)
+        for (let [i, block] of this.blocks.map((b, i) => [i, b])) {
+            if (rayCubeSphere(pNear, pFar, this.displayTransform(block.position), 1)) {
+                const triangles = getTriangles(block.vertices, block.indices, block.geometry.transform)
+                const intersections = triangles.map(t => rayTriangle(pNear, pFar, ...t)).filter(x => x)
+                if (intersections.length) {
+                    const dist = Math.min(...intersections.map(v => vec3.distance(v, this.camera.position)))
+                    if (dist < closestDist) {
+                        closestDist = dist
+                        closest = block
+                        closestId = i
+                    }
+                }
+            }
+        }
+        return [ closest, closestId ]
     }
 
     displayTransform(positions) {
