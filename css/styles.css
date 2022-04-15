@@ -30,3 +30,29 @@ body {
     padding: 0 30px;
     border-left: 1px solid white;
 }
+
+.flexRow {
+    display: flex;
+    flex-direction: row;
+}
+.flexCol {
+    display: flex;
+    flex-direction: column;
+}
+
+#rubik-controls {
+    width: 200px;
+}
+
+#rubik-controls .flexRow {
+    align-items: center;
+    justify-content: space-between;
+}
+
+#rubik-controls > .flexRow:not(:last-child) {
+    padding-bottom: 30px;
+}
+
+#rubik-controls > .flexRow > .flexRow {
+    min-width: 45px;
+}

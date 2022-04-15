@@ -23,6 +23,10 @@ function randInt(x) {
     return Math.floor(Math.random() * x)
 }
 
+function strJoin(arr, f) {
+    return arr.map(f).join('')
+}
+
 async function fetchAndDecode(url, type='text') {
     let response = await fetch(url);
 

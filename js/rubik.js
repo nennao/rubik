@@ -112,15 +112,17 @@ class Block {
         this.faces.forEach(_initPos)
     }
 
-    rotate(axisId, dir) {
-        const angle = rad(90 * dir)
+    rotate(axisId, dir, amt, isFinal) {
+        const angle = rad(amt * dir)
         const axis = ['x', 'y', 'z'].map(a => a === axisId ? 1 : 0)
         const rotation = mat4.rotate(mat4.create(), mat4.create(), angle, axis)
 
         const _rotate = entity => {mat4.multiply(entity.geometry.transform, rotation, entity.geometry.transform)}
         _rotate(this)
         this.faces.forEach(_rotate)
-        this.position = vec3[`rotate${axisId.toUpperCase()}`]([], this.position, axis, angle).map(mR)
+        if (isFinal) {
+            this.position = vec3[`rotate${axisId.toUpperCase()}`]([], this.position, axis, rad(90*dir)).map(mR)
+        }
     }
 
     draw(shader) {
@@ -144,9 +146,11 @@ class Rubik {
         this.camera = camera
         this.shader = shader
 
+        this.speed = 3
         this.spread = 1.5
         this.blockColor = [0.1, 0.1, 0.1]
         this.blocks = []
+        this.rotationQueue = []
 
         for (let x=-1; x<2; x++) {
             for (let y=-1; y<2; y++) {
@@ -155,23 +159,51 @@ class Rubik {
                 }
             }
         }
-        for (let _ of Array(3)) {
-            const axis = ['x', 'y', 'z'][randInt(3)]
-            const level = [-1, 0, 1][randInt(3)]
-            const dir = [-1, 1][randInt(2)]
-            this.doRotate(axis, level, dir)
-        }
+
+        this.initUIWatcher()
+        initDOMInputs(this)
+    }
+
+    initUIWatcher() {
+        const getters = [
+            () => 0,  // for dom ui
+            () => this.camera.aspect,
+        ]
+
+        this.uiWatcher = getters.map((getter, i) => ({val: i ? getter() : 1, get: getter}))
+    }
+
+    triggerRedraw() {
+        this.uiWatcher[0].val = 1
     }
 
     displayTransform(positions) {
         return positions.map(p => p * this.spread)
     }
 
-    doRotate(axis, level, dir) {
+    runRotation() {
+        const speed = this.rotationQueue.length * this.speed
+        if (speed) {
+            const [axis, level, dir, rem] = this.rotationQueue[0]
+            const amt = Math.min(speed, rem)
+            const newRem = rem - speed
+            const isFinal = newRem <= 0
+            this.doRotate(axis, level, dir, amt, isFinal)
+            if (isFinal) {
+                this.rotationQueue.shift()
+            }
+            else {
+                this.rotationQueue[0][3] = newRem
+            }
+            this.triggerRedraw()
+        }
+    }
+
+    doRotate(axis, level, dir, amt, isFinal) {
         const axisId = ['x', 'y', 'z'].indexOf(axis)
         for (let block of this.blocks) {
             if (block.position[axisId] === level) {
-                block.rotate(axis, dir)
+                block.rotate(axis, dir, amt, isFinal)
             }
         }
     }
@@ -188,9 +220,22 @@ class Rubik {
         this.drawBlocks()
     }
 
+    uiWatch() {
+        for (let watcher of this.uiWatcher) {
+            if (watcher.val !== watcher.get()) {
+                watcher.val = watcher.get()
+                return true
+            }
+        }
+        return false
+    }
+
     render(t) {
         const dt = t - this.clock
-        const play = !this.paused
+        if (this.rotationQueue.length) {
+            this.runRotation()
+        }
+        const play = this.uiWatch()
 
         document.getElementById('fpsTxt').innerText = play ? mR(1/dt, 2) : '-'
         this.clock = t
@@ -205,7 +250,25 @@ class Rubik {
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT)
 
             this.draw()
-            this.paused = true
         }
     }
+}
+
+function initDOMInputs(rubik) {
+    const axes = ['x', 'y', 'z']
+    document.getElementById('rubik-controls').innerHTML = strJoin(axes, axis => `
+        <div id="controls-${axis}" class="flexRow">
+        ${strJoin([1, 2, 3], i => `
+            <div class="flexRow"><span>${axis}${i}</span><div class="flexCol"><button>^</button><button>v</button></div></div>
+        `)}
+        </div>
+    `)
+
+    axes.forEach(axis => {
+        document.querySelectorAll(`#controls-${axis} > div`).forEach((div, i) => {
+            div.querySelectorAll('button').forEach((button, j) => {
+                button.onclick = () => rubik.rotationQueue.push([axis, i-1, j ? -1 : 1, 90])
+            })
+        })
+    })
 }
