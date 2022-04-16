@@ -86,7 +86,10 @@ class Block {
         )
 
         this.geometry = new Geometry(gl, this.vertices, this.colors, this.indices)
-        this.faces = this.createFaces(position)
+        const [faces, faceNormals] = this.createFaces(position)
+        this.faces = faces
+        this.faceNormals = Object.fromEntries(faceNormals.map(n => [idFrom3d(n), n]))
+        this.faceTriangles = getTriangles(this.vertices, this.indices).map(t => [getTriangleNormId(t), t])
         this.initPosition()
     }
 
@@ -97,12 +100,26 @@ class Block {
             {0: ['Y', 180], 2: ['Y',   0]},
         ]
         const faces = []
+        const faceNormals = []
         position.forEach((p, i) => {
             if (p) {
+                faceNormals.push(Array.from(position).map((q, j) => j === i ? q : 0))
                 faces.push(new Face(this, position, [['x', 'y', 'z'][i], p], faceTransforms[i][p+1]))
             }
         })
-        return faces
+        return [faces, faceNormals]
+    }
+
+    getFaceNormals() {
+        const res = {}
+        for (let i=0; i<this.faceTriangles.length; i++) {
+            const [normId] = this.faceTriangles[i]
+            if (this.faceNormals[normId]) {
+                const normIdT = this.transformedTriangles[i][0]
+                res[normIdT] = res[normIdT] || idTo3d(normIdT)
+            }
+        }
+        return res
     }
 
     initPosition() {
@@ -110,6 +127,12 @@ class Block {
         const _initPos = entity => {mat4.translate(entity.geometry.transform, mat4.create(), displayPosition)}
         _initPos(this)
         this.faces.forEach(_initPos)
+        this.updateFaceTriangles()
+    }
+
+    updateFaceTriangles() {
+        const triangles = this.faceTriangles.map(([nI, t]) => transformTriangle(t, this.geometry.transform))
+        this.transformedTriangles = triangles.map(t => [getTriangleNormId(t), t])
     }
 
     rotate(axisId, dir, amt, isFinal) {
@@ -123,6 +146,7 @@ class Block {
         if (isFinal) {
             this.position = vec3[`rotate${axisId.toUpperCase()}`]([], this.position, axis, rad(90*dir)).map(mR)
         }
+        this.updateFaceTriangles()
     }
 
     draw(shader) {
@@ -178,36 +202,77 @@ class Rubik {
         this.uiWatcher[0].val = 1
     }
 
+    queueRotation(axis, level, dir) {
+        this.rotationQueue.push([axis, level, dir, 90])
+    }
+
     handleInputEvents() {
-        this.gl.canvas.addEventListener('click', e => {
-            if (e.which === 1) {
-                const [ closest, closestId ] = this.findClosestBlock(e.clientX, e.clientY)
+        const canvas = this.gl.canvas
+
+        const mousedownBlockMoveHandler = e => {
+            if (this.blockMovePath.length) {
+                e.preventDefault()
+                const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
                 if (closest) {
-                    console.log(closestId)
+                    if (!this.blockMovePath.find(([id]) => id === closestId)) {
+                        if (this.blockMovePath.length > 1) {
+                            this.blockMovePath = []
+                            return
+                        }
+                        this.blockMovePath.push([closestId])
+                    }
+                    const [block1, norm1] = this.blockMovePath[0]
+                    if (block1 === closestId ^ norm1 === normId) {
+                        const rotAxis = vec3.cross([],
+                            idTo3d(norm1), norm1 !== normId ? idTo3d(normId)
+                                                            : vec3.normalize([], vec3.subtract([], closest.position, this.blocks[block1].position)))
+                        const [aI, axis, dir] = getAxisInfo(rotAxis)
+                        this.queueRotation(axis, closest.position[aI], dir)
+                        this.blockMovePath = []
+                    }
+                }
+            }
+        }
+
+        const mouseupBlockHandler = e => {
+            if (e.which === 1) {
+                this.blockMovePath = []
+                window.removeEventListener('mousemove', mousedownBlockMoveHandler)
+                window.removeEventListener('mouseup',   mouseupBlockHandler)
+            }
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            if (e.which === 1) {
+                const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
+                if (closest && closest.getFaceNormals()[normId]) {  // todo handle this better
+                    this.blockMovePath = [[closestId, normId]]
+                    window.addEventListener('mousemove', mousedownBlockMoveHandler)
+                    window.addEventListener('mouseup',   mouseupBlockHandler)
                 }
             }
         })
     }
 
     findClosestBlock(x, y) {
-        let closest, closestId, closestDist = Infinity
+        let closest, closestId, closestDist = Infinity, normId
         const pNear= this.camera.position
         const pFar = this.camera.getPickedVector(x, y)
         for (let [i, block] of this.blocks.map((b, i) => [i, b])) {
             if (rayCubeSphere(pNear, pFar, this.displayTransform(block.position), 1)) {
-                const triangles = getTriangles(block.vertices, block.indices, block.geometry.transform)
-                const intersections = triangles.map(t => rayTriangle(pNear, pFar, ...t)).filter(x => x)
+                const intersections = block.transformedTriangles.map(([nI, t]) => [nI, rayTriangle(pNear, pFar, ...t)]).filter(([nI, v]) => v)
                 if (intersections.length) {
-                    const dist = Math.min(...intersections.map(v => vec3.distance(v, this.camera.position)))
+                    const [nI, dist] = min(intersections.map(([nI, v]) => [nI, vec3.distance(v, this.camera.position)]), k=>k[1])
                     if (dist < closestDist) {
                         closestDist = dist
                         closest = block
                         closestId = i
+                        normId = nI
                     }
                 }
             }
         }
-        return [ closest, closestId ]
+        return [ closest, closestId, normId ]
     }
 
     displayTransform(positions) {
@@ -300,7 +365,7 @@ function initDOMInputs(rubik) {
     axes.forEach(axis => {
         document.querySelectorAll(`#controls-${axis} > div`).forEach((div, i) => {
             div.querySelectorAll('button').forEach((button, j) => {
-                button.onclick = () => rubik.rotationQueue.push([axis, i-1, j ? -1 : 1, 90])
+                button.onclick = () => rubik.queueRotation(axis, i-1, j ? -1 : 1)
             })
         })
     })

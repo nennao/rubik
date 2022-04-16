@@ -18,6 +18,10 @@ function sum(a) {
     return a.reduce((x, y) => x + y, 0)
 }
 
+function min(a, key=k=>k) {
+    return a.reduce((x, y) => key(x) < key(y) ? x : y, Infinity)
+}
+
 
 function randInt(x) {
     return Math.floor(Math.random() * x)
@@ -105,9 +109,49 @@ function getTriangles(vertices, indices, transform) {
         vertices[i*3 + 1],
         vertices[i*3 + 2],
     ])
-    return Array.from({length: indices.length/3}).map((_, i) => [
+    return Array.from({length: indices.length/3}).map((_, i) => transformTriangle([
         vertices[indices[i*3    ]],
         vertices[indices[i*3 + 1]],
         vertices[indices[i*3 + 2]],
-    ].map(v => transform ? vec3.transformMat4([], v, transform) : v))
+    ], transform))
+}
+
+function transformTriangle(triangle, transform) {
+    if (!transform) {
+        return triangle
+    }
+    return triangle.map(t => vec3.transformMat4([], t, transform))
+}
+
+
+function getV(p0, p) {
+    return vec3.subtract([], p, p0)
+}
+
+function getNormal(v1, v2) {
+    return vec3.normalize([], vec3.cross([], v1, v2))
+}
+
+function idFrom3d(v) {
+    return sum(v.map((n, i) => (n + 1) * 3**(3-i-1)))
+}
+
+function idTo3d(id) {
+    const res = []
+    let n = id
+    for (let i of [2, 1, 0]) {
+        res.push(Math.floor(n/(3**i)))
+        n = n%(3**i)
+    }
+    return res.map(n => n -1)
+}
+
+function getTriangleNormId(t) {
+    const edges = [getV(t[0], t[1]), getV(t[0], t[2])]
+    const norm = getNormal(...edges).map(mR)
+    return idFrom3d(norm)
+}
+
+function getAxisInfo(v) {
+    return v.map((n, i) => [i, ['x', 'y', 'z'][i], n]).filter(([i, a, n]) => n)[0]
 }
