@@ -56,3 +56,7 @@ body {
 #rubik-controls > .flexRow > .flexRow {
     min-width: 45px;
 }
+
+#glCanvas {
+    touch-action: none;
+}

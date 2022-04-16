@@ -237,18 +237,18 @@ class Rubik {
         const mouseupBlockHandler = e => {
             if (e.which === 1) {
                 this.blockMovePath = []
-                window.removeEventListener('mousemove', mousedownBlockMoveHandler)
-                window.removeEventListener('mouseup',   mouseupBlockHandler)
+                window.removeEventListener('pointermove', mousedownBlockMoveHandler)
+                window.removeEventListener('pointerup',   mouseupBlockHandler)
             }
         }
 
-        canvas.addEventListener('mousedown', e => {
+        canvas.addEventListener('pointerdown', e => {
             if (e.which === 1) {
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
                 if (closest && closest.getFaceNormals()[normId]) {  // todo handle this better
                     this.blockMovePath = [[closestId, normId]]
-                    window.addEventListener('mousemove', mousedownBlockMoveHandler)
-                    window.addEventListener('mouseup',   mouseupBlockHandler)
+                    window.addEventListener('pointermove', mousedownBlockMoveHandler)
+                    window.addEventListener('pointerup',   mouseupBlockHandler)
                 }
             }
         })
