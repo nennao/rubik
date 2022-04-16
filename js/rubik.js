@@ -216,17 +216,21 @@ class Rubik {
     }
 
     shuffle() {
+        const axes = ['x', 'y', 'z']
         this.shuffling = true
-        for (let dir of [-1, 1]) {
-            for (let _ of Array(randInt(3)+5)) {
-                const axis = ['x', 'y', 'z'][randInt(3)]
+        const a = [...axes]
+        const randAxes = [a.splice(randInt(3), 1)[0], a.splice(randInt(2), 1)[0], a[0]]
+        for (let _ of Array(randInt(3)+3)) {
+            for (let axis of randAxes) {
                 const level = [-1, 0, 1][randInt(3)]
+                const dir = [-1, 1][randInt(2)]
                 this.queueRotation(axis, level, dir)
             }
         }
     }
 
     reset() {
+        this.rotationQueue = []
         this.createBlocks()
         this.triggerRedraw()
     }
