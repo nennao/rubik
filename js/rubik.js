@@ -173,8 +173,16 @@ class Rubik {
         this.speed = 3
         this.spread = 1.5
         this.blockColor = [0.1, 0.1, 0.1]
-        this.blocks = []
         this.rotationQueue = []
+
+        this.createBlocks()
+        this.initUIWatcher()
+        this.initDOMInputs()
+        this.handleInputEvents()
+    }
+
+    createBlocks() {
+        this.blocks = []
 
         for (let x=-1; x<2; x++) {
             for (let y=-1; y<2; y++) {
@@ -183,10 +191,6 @@ class Rubik {
                 }
             }
         }
-
-        this.initUIWatcher()
-        initDOMInputs(this)
-        this.handleInputEvents()
     }
 
     initUIWatcher() {
@@ -198,12 +202,33 @@ class Rubik {
         this.uiWatcher = getters.map((getter, i) => ({val: i ? getter() : 1, get: getter}))
     }
 
+    initDOMInputs(){
+        document.getElementById('shuffle').onclick = () => this.shuffle()
+        document.getElementById('reset').onclick = () => this.reset()
+    }
+
     triggerRedraw() {
         this.uiWatcher[0].val = 1
     }
 
     queueRotation(axis, level, dir) {
         this.rotationQueue.push([axis, level, dir, 90])
+    }
+
+    shuffle() {
+        this.shuffling = true
+        for (let dir of [-1, 1]) {
+            for (let _ of Array(randInt(3)+5)) {
+                const axis = ['x', 'y', 'z'][randInt(3)]
+                const level = [-1, 0, 1][randInt(3)]
+                this.queueRotation(axis, level, dir)
+            }
+        }
+    }
+
+    reset() {
+        this.createBlocks()
+        this.triggerRedraw()
     }
 
     handleInputEvents() {
@@ -243,7 +268,7 @@ class Rubik {
         }
 
         canvas.addEventListener('pointerdown', e => {
-            if (e.which === 1) {
+            if (e.which === 1 && !this.shuffling) {
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
                 if (closest && closest.getFaceNormals()[normId]) {  // todo handle this better
                     this.blockMovePath = [[closestId, normId]]
@@ -280,8 +305,8 @@ class Rubik {
     }
 
     runRotation() {
-        const speed = this.rotationQueue.length * this.speed
-        if (speed) {
+        if (this.rotationQueue.length) {
+            const speed = (this.shuffling ? 2 : 1) * this.speed
             const [axis, level, dir, rem] = this.rotationQueue[0]
             const amt = Math.min(speed, rem)
             const newRem = rem - speed
@@ -292,6 +317,9 @@ class Rubik {
             }
             else {
                 this.rotationQueue[0][3] = newRem
+            }
+            if (!this.rotationQueue.length && this.shuffling) {
+                this.shuffling = false
             }
             this.triggerRedraw()
         }
@@ -335,7 +363,6 @@ class Rubik {
         }
         const play = this.uiWatch()
 
-        document.getElementById('fpsTxt').innerText = play ? mR(1/dt, 2) : '-'
         this.clock = t
 
         this.gl.enable(this.gl.DEPTH_TEST)
@@ -350,23 +377,4 @@ class Rubik {
             this.draw()
         }
     }
-}
-
-function initDOMInputs(rubik) {
-    const axes = ['x', 'y', 'z']
-    document.getElementById('rubik-controls').innerHTML = strJoin(axes, axis => `
-        <div id="controls-${axis}" class="flexRow">
-        ${strJoin([1, 2, 3], i => `
-            <div class="flexRow"><span>${axis}${i}</span><div class="flexCol"><button>^</button><button>v</button></div></div>
-        `)}
-        </div>
-    `)
-
-    axes.forEach(axis => {
-        document.querySelectorAll(`#controls-${axis} > div`).forEach((div, i) => {
-            div.querySelectorAll('button').forEach((button, j) => {
-                button.onclick = () => rubik.queueRotation(axis, i-1, j ? -1 : 1)
-            })
-        })
-    })
 }

@@ -16,7 +16,7 @@ class Camera {
     }
 
     resize() {
-        const width = window.innerWidth - document.getElementById('controlsCont').clientWidth - 15  // scroll bar
+        const width = window.innerWidth
         const height = window.innerHeight
         this.gl.canvas.width = width * window.devicePixelRatio
         this.gl.canvas.height = height * window.devicePixelRatio
