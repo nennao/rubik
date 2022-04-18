@@ -153,5 +153,8 @@ function getTriangleNormId(t) {
 }
 
 function getAxisInfo(v) {
+    if (v.filter(n => n).length !== 1) {
+        return []
+    }
     return v.map((n, i) => [i, ['x', 'y', 'z'][i], n]).filter(([i, a, n]) => n)[0]
 }

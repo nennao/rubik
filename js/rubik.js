@@ -132,7 +132,8 @@ class Block {
 
     updateFaceTriangles() {
         const triangles = this.faceTriangles.map(([nI, t]) => transformTriangle(t, this.geometry.transform))
-        this.transformedTriangles = triangles.map(t => [getTriangleNormId(t), t])
+        //this assumes the normals dont ever need the root's transform...
+        this.transformedTriangles = triangles.map(t => [getTriangleNormId(t), transformTriangle(t, this.root.transform)])
     }
 
     rotate(axisId, dir, amt, isFinal) {
@@ -175,10 +176,14 @@ class Rubik {
         this.blockColor = [0.1, 0.1, 0.1]
         this.rotationQueue = []
 
+        this.transform = mat4.create()
         this.createBlocks()
         this.initUIWatcher()
         this.initDOMInputs()
         this.handleInputEvents()
+
+        this.rotate(-45, [0, 1, 0])
+        this.rotate( 35, [1, 0, 0])
     }
 
     createBlocks() {
@@ -197,6 +202,7 @@ class Rubik {
         const getters = [
             () => 0,  // for dom ui
             () => this.camera.aspect,
+            () => this.camera.rotation,
         ]
 
         this.uiWatcher = getters.map((getter, i) => ({val: i ? getter() : 1, get: getter}))
@@ -215,6 +221,13 @@ class Rubik {
         this.rotationQueue.push([axis, level, dir, 90])
     }
 
+    rotate(angle, rotAxis) {
+        const rotation = mat4.rotate(mat4.create(), mat4.create(), rad(angle), rotAxis)
+        mat4.multiply(this.transform, rotation, this.transform)
+        this.blocks.forEach(b => b.updateFaceTriangles())
+        this.triggerRedraw()
+    }
+
     shuffle() {
         const axes = ['x', 'y', 'z']
         this.shuffling = true
@@ -231,7 +244,12 @@ class Rubik {
 
     reset() {
         this.rotationQueue = []
+        const oldTransform = this.transform
+        this.transform = mat4.create()
         this.createBlocks()
+
+        this.transform = oldTransform
+        this.blocks.forEach(b => b.updateFaceTriangles())
         this.triggerRedraw()
     }
 
@@ -256,7 +274,9 @@ class Rubik {
                             idTo3d(norm1), norm1 !== normId ? idTo3d(normId)
                                                             : vec3.normalize([], vec3.subtract([], closest.position, this.blocks[block1].position)))
                         const [aI, axis, dir] = getAxisInfo(rotAxis)
-                        this.queueRotation(axis, closest.position[aI], dir)
+                        if (axis && (dir === 1 || dir === -1)) {
+                            this.queueRotation(axis, closest.position[aI], dir)
+                        }
                         this.blockMovePath = []
                     }
                 }
@@ -305,7 +325,7 @@ class Rubik {
     }
 
     displayTransform(positions) {
-        return positions.map(p => p * this.spread)
+        return vec3.transformMat4([], positions.map(p => p * this.spread), this.transform)
     }
 
     runRotation() {
@@ -347,6 +367,7 @@ class Rubik {
     draw() {
         this.shader.bind()
         this.shader.setUniforms(this.camera)
+        this.shader.setUniformMat4('u_RubikMatrix', this.transform)
         this.drawBlocks()
     }
 
