@@ -48,6 +48,7 @@ class Camera {
 
     handleWheelZoom() {
         this.gl.canvas.addEventListener('wheel', e => {
+            e.preventDefault()
             this.distance = mR(this.distance + (e.deltaY * 0.05), 2)
             if (this.distance > 30) this.distance = 30
             if (this.distance < 6) this.distance = 6

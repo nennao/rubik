@@ -42,7 +42,7 @@ class Face {
     constructor(block, position, facing, transform) {
         this.gl = block.gl
         this.block = block
-        const [v, i] = squareData(0.8, 0.5 + this.epsilon)
+        const [v, i] = squareData(0.7, 0.5 + this.epsilon)
 
         this.vertices = this.orientFace(v, ...transform)
         this.indices = i
@@ -172,7 +172,7 @@ class Rubik {
         this.shader = shader
 
         this.speed = 3
-        this.spread = 1.5
+        this.spread = 1.1
         this.blockColor = [0.1, 0.1, 0.1]
         this.rotationQueue = []
 
@@ -203,7 +203,6 @@ class Rubik {
             () => 0,  // for dom ui
             () => this.camera.aspect,
             () => this.camera.distance,
-            () => this.camera.rotation,
         ]
 
         this.uiWatcher = getters.map((getter, i) => ({val: i ? getter() : 1, get: getter}))
@@ -292,13 +291,35 @@ class Rubik {
             }
         }
 
+
+        const mousedownRotateHandler = e => {
+            const cap = n => Math.min(n, 3)
+            this.rotate(cap(e.clientY-this.mouse.y), [1, 0, 0])
+            this.rotate(cap(e.clientX-this.mouse.x), [0, 1, 0])
+            this.mouse = {x: e.clientX, y: e.clientY}
+        }
+
+        const mouseupRotateHandler = e => {
+            if (e.which === 1) {
+                window.removeEventListener('pointermove', mousedownRotateHandler)
+                window.removeEventListener('pointerup',   mouseupRotateHandler)
+            }
+        }
+
         canvas.addEventListener('pointerdown', e => {
-            if (e.which === 1 && !this.shuffling) {
+            if (e.which === 1) {
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
-                if (closest && closest.getFaceNormals()[normId]) {  // todo handle this better
-                    this.blockMovePath = [[closestId, normId]]
-                    window.addEventListener('pointermove', mousedownBlockMoveHandler)
-                    window.addEventListener('pointerup',   mouseupBlockHandler)
+                if (closest) {  // todo handle this better
+                    if (!this.shuffling && closest.getFaceNormals()[normId]){
+                        this.blockMovePath = [[closestId, normId]]
+                        window.addEventListener('pointermove', mousedownBlockMoveHandler)
+                        window.addEventListener('pointerup',   mouseupBlockHandler)
+                    }
+                }
+                else {
+                    this.mouse = {x: e.clientX, y: e.clientY}
+                    window.addEventListener('pointermove', mousedownRotateHandler)
+                    window.addEventListener('pointerup',   mouseupRotateHandler)
                 }
             }
         })
