@@ -315,22 +315,8 @@ class Rubik {
             window.removeEventListener('pointerup',   mouseupZoomHandler)
         }
 
-        const mouseupHandler = e => {
-            for (let i = 0; i < this.events.cache.length; i++) {
-                if (this.events.cache[i].pointerId === e.pointerId) {
-                    this.events.cache.splice(i, 1)
-                    break
-                }
-            }
-            if (this.events.cache.length < 2) {
-                this.events.prevDiff = -1;
-            }
-            window.removeEventListener('pointerup', mouseupHandler)
-        }
-
         canvas.addEventListener('pointerdown', e => {
             this.events.cache.push(e)
-            window.addEventListener('pointerup', mouseupHandler)
 
             if (this.events.cache.length === 2) {
                 window.addEventListener('pointermove', mousedownZoomHandler)
@@ -350,6 +336,18 @@ class Rubik {
                     window.addEventListener('pointermove', mousedownRotateHandler)
                     window.addEventListener('pointerup',   mouseupRotateHandler)
                 }
+            }
+        })
+
+        window.addEventListener('pointerup', e => {
+            for (let i = 0; i < this.events.cache.length; i++) {
+                if (this.events.cache[i].pointerId === e.pointerId) {
+                    this.events.cache.splice(i, 1)
+                    break
+                }
+            }
+            if (this.events.cache.length < 2) {
+                this.events.prevDiff = -1;
             }
         })
     }
