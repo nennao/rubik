@@ -259,6 +259,10 @@ class Rubik {
         const canvas = this.gl.canvas
 
         const mousedownBlockMoveHandler = e => {
+            if (this.events.cache.length !== 1) {
+                this.blockMovePath = []
+                return
+            }
             if (this.blockMovePath.length) {
                 e.preventDefault()
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
@@ -295,9 +299,11 @@ class Rubik {
 
 
         const mousedownRotateHandler = e => {
-            const cap = n => Math.min(n, 3)
-            this.rotate(cap(e.clientY-this.mouse.y), [1, 0, 0])
-            this.rotate(cap(e.clientX-this.mouse.x), [0, 1, 0])
+            if (this.events.cache.length === 1) {
+                const cap = n => Math.min(n, 3)
+                this.rotate(cap(e.clientY-this.mouse.y), [1, 0, 0])
+                this.rotate(cap(e.clientX-this.mouse.x), [0, 1, 0])
+            }
             this.mouse = {x: e.clientX, y: e.clientY}
         }
 
@@ -319,8 +325,6 @@ class Rubik {
             this.events.cache.push(e)
 
             if (this.events.cache.length === 2) {
-                mouseupBlockHandler({which: 1})
-                mouseupRotateHandler({which: 1})
                 window.addEventListener('pointermove', mousedownZoomHandler)
                 window.addEventListener('pointerup',   mouseupZoomHandler)
             }
