@@ -171,7 +171,7 @@ class Rubik {
         this.camera = camera
         this.shader = shader
 
-        this.speed = 3
+        this.speed = 180
         this.spread = 1.1
         this.blockColor = [0.1, 0.1, 0.1]
         this.rotationQueue = []
@@ -405,12 +405,12 @@ class Rubik {
         return vec3.transformMat4([], positions.map(p => p * this.spread), this.transform)
     }
 
-    runRotation() {
+    runRotation(dt) {
         if (this.rotationQueue.length) {
-            const speed = (this.shuffling ? 2 : 1) * this.speed
+            const angle = mR((this.shuffling ? 2 : 1) * this.speed * dt)
             const [axis, level, dir, rem] = this.rotationQueue[0]
-            const amt = Math.min(speed, rem)
-            const newRem = rem - speed
+            const amt = Math.min(angle, rem)
+            const newRem = rem - angle
             const isFinal = newRem <= 0
             this.doRotate(axis, level, dir, amt, isFinal)
             if (isFinal) {
@@ -461,7 +461,7 @@ class Rubik {
     render(t) {
         const dt = t - this.clock
         if (this.rotationQueue.length) {
-            this.runRotation()
+            this.runRotation(dt)
         }
         const play = this.uiWatch()
 
