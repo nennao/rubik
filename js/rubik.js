@@ -202,6 +202,7 @@ class Rubik {
         const getters = [
             () => 0,  // for dom ui
             () => this.camera.aspect,
+            () => this.camera.distance,
             () => this.camera.rotation,
         ]
 

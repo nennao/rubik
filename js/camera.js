@@ -13,6 +13,8 @@ class Camera {
     constructor(gl) {
         this.gl = gl
         this.resize()
+        this.distance = 15
+        this.handleWheelZoom()
     }
 
     resize() {
@@ -27,6 +29,7 @@ class Camera {
     }
 
     update(dt) {
+        this.position = [0.0, 0.0, this.distance]
         mat4.perspective(this.projectionMatrix, this.fov, this.aspect, this.zNear, this.zFar)
         mat4.lookAt(this.viewMatrix, this.position, this.target, this.up)
     }
@@ -41,5 +44,13 @@ class Camera {
         const PV = mat4.multiply(mat4.create(), this.projectionMatrix, this.viewMatrix)
         const invVP = mat4.invert(mat4.create(), PV)
         return vec3.transformMat4([], pf, invVP)
+    }
+
+    handleWheelZoom() {
+        this.gl.canvas.addEventListener('wheel', e => {
+            this.distance = mR(this.distance + (e.deltaY * 0.05), 2)
+            if (this.distance > 30) this.distance = 30
+            if (this.distance < 6) this.distance = 6
+        })
     }
 }
