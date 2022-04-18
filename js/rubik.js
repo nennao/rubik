@@ -184,6 +184,8 @@ class Rubik {
 
         this.rotate(-45, [0, 1, 0])
         this.rotate( 35, [1, 0, 0])
+
+        this.events = {cache: [], prevDiff: -1}
     }
 
     createBlocks() {
@@ -306,8 +308,35 @@ class Rubik {
             }
         }
 
+        const mousedownZoomHandler = this.mousedownZoomHandler.bind(this)
+
+        const mouseupZoomHandler = e => {
+            window.removeEventListener('pointermove', mousedownZoomHandler)
+            window.removeEventListener('pointerup',   mouseupZoomHandler)
+        }
+
+        const mouseupHandler = e => {
+            for (let i = 0; i < this.events.cache.length; i++) {
+                if (this.events.cache[i].pointerId === e.pointerId) {
+                    this.events.cache.splice(i, 1)
+                    break
+                }
+            }
+            if (this.events.cache.length < 2) {
+                this.events.prevDiff = -1;
+            }
+            window.removeEventListener('pointerup', mouseupHandler)
+        }
+
         canvas.addEventListener('pointerdown', e => {
-            if (e.which === 1 && e.isPrimary) {
+            this.events.cache.push(e)
+            window.addEventListener('pointerup', mouseupHandler)
+
+            if (this.events.cache.length === 2) {
+                window.addEventListener('pointermove', mousedownZoomHandler)
+                window.addEventListener('pointerup',   mouseupZoomHandler)
+            }
+            else if (e.which === 1 && this.events.cache.length === 1) {
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
                 if (closest) {  // todo handle this better
                     if (!this.shuffling && closest.getFaceNormals()[normId]){
@@ -324,6 +353,28 @@ class Rubik {
             }
         })
     }
+
+    mousedownZoomHandler(e) {
+        const { cache, prevDiff } = this.events
+
+        // update the event
+        for (let i = 0; i < cache.length; i++) {
+            if (e.pointerId === cache[i].pointerId) {
+                cache[i] = e
+                break
+            }
+        }
+
+        if (cache.length === 2) {
+            let currDiff = Math.hypot(cache[0].clientX - cache[1].clientX, cache[0].clientY - cache[1].clientY)
+
+            if (prevDiff > 0) {
+                this.camera.handleZoom((prevDiff-currDiff) * 0.1)
+            }
+            this.events.prevDiff = currDiff
+        }
+    }
+
 
     findClosestBlock(x, y) {
         let closest, closestId, closestDist = Infinity, normId
