@@ -319,6 +319,8 @@ class Rubik {
             this.events.cache.push(e)
 
             if (this.events.cache.length === 2) {
+                mouseupBlockHandler({which: 1})
+                mouseupRotateHandler({which: 1})
                 window.addEventListener('pointermove', mousedownZoomHandler)
                 window.addEventListener('pointerup',   mouseupZoomHandler)
             }
