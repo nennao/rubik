@@ -246,6 +246,7 @@ class Rubik {
 
     reset() {
         this.rotationQueue = []
+        this.shuffling = false
         const oldTransform = this.transform
         this.transform = mat4.create()
         this.createBlocks()
