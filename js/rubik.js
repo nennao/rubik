@@ -307,7 +307,7 @@ class Rubik {
         }
 
         canvas.addEventListener('pointerdown', e => {
-            if (e.which === 1) {
+            if (e.which === 1 && e.isPrimary) {
                 const [ closest, closestId, normId ] = this.findClosestBlock(e.clientX, e.clientY)
                 if (closest) {  // todo handle this better
                     if (!this.shuffling && closest.getFaceNormals()[normId]){
